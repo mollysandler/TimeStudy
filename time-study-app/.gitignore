@@ -24,5 +24,17 @@ dist-ssr
 *.sw?
 
 # my stuff
-venv
-instance
+venv/
+instance/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS-generated files (macOS)
+.DS_Store
+
+#env 
+.env

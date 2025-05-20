@@ -25,7 +25,6 @@ export function AdminSidebar() {
           Admin Panel
         </Text>
       </Flex>
-
       <VStack spacing={1} align="stretch" flex="1" py={8}>
         <Link to="/admin">
           <Button
@@ -97,11 +96,11 @@ export function AdminSidebar() {
           Settings
         </Button>
       </VStack>
-
-      {/* //TODO: implement sign out functionality */}
-      <Button variant="outline" leftIcon={<ExternalLinkIcon />}>
-        Sign Out
-      </Button>
+      <Link to="/">
+        <Button variant="outline" leftIcon={<ExternalLinkIcon />} w="full">
+          Sign Out
+        </Button>
+      </Link>
     </Flex>
   );
 }

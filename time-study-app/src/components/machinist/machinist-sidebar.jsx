@@ -62,9 +62,11 @@ export function MachinistSidebar() {
         ))}
       </VStack>
 
-      <Button variant="outline" leftIcon={<ExternalLinkIcon />}>
-        Sign Out
-      </Button>
+      <Link to="/">
+        <Button variant="outline" leftIcon={<ExternalLinkIcon />} w="full">
+          Sign Out
+        </Button>
+      </Link>
     </Flex>
   );
 }

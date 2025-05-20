@@ -1,13 +1,13 @@
-import os # <--- Make sure this import is at the top
+import os
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
-from models import db, Item
+from models import db, User, TimeStudy, Step
 
 # --- Configuration ---
 app = Flask(__name__)
 
-# Get the absolute path of the directory where app.py is located
+# bsolute path of the directory where app.py is located
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 # Define the path to the instance folder, relative to the app.py file
@@ -15,7 +15,6 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 instance_path = os.path.join(basedir, 'instance')
 
 # Create the instance folder if it doesn't exist
-# This is good practice, though you said it exists, it doesn't hurt.
 if not os.path.exists(instance_path):
     try:
         os.makedirs(instance_path)
@@ -53,56 +52,104 @@ with app.app_context():
 
 
 # --- API Endpoints (Routes) ---
-# ... (rest of your routes, no changes needed here) ...
 @app.route('/')
 def home():
     return "Hello from Flask Backend!"
 
-# GET all items
-@app.route('/api/items', methods=['GET'])
-def get_items():
-    items = Item.query.all() # Get all Item objects from the database
-    return jsonify([item.to_dict() for item in items]) # Convert each item to a dict and return as JSON
+# --- USERS ---
 
-# GET a single item by ID
-@app.route('/api/items/<int:item_id>', methods=['GET'])
-def get_item(item_id):
-    item = Item.query.get_or_404(item_id) # Get item by ID or return 404 if not found
-    return jsonify(item.to_dict())
+# POST create new user
+@app.route('/api/users', methods=['POST'])
+def create_user():
+    data = request.get_json()
+    if not data or not data.get('username'):
+        return jsonify({'error': 'Username is required'}), 400
+    
+    existing_user = User.query.filter_by(username=data['username']).first()
+    if existing_user:
+        return jsonify({'error': 'Username already exists'}), 400
+        
+    new_user = User(username=data['username'])
+    new_user.role = data['role']
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify(new_user.to_dict()), 201
 
-# CREATE a new item
-@app.route('/api/items', methods=['POST'])
-def create_item():
-    data = request.get_json() # Get data from the request body (expected to be JSON)
-    if not data or not 'name' in data:
-        return jsonify({'error': 'Missing name in request body'}), 400
+# GET all users
+@app.route('/api/users', methods=['GET'])
+def get_users():
+    users = User.query.all()
+    return jsonify([user.to_dict() for user in users])
 
-    new_item = Item(name=data['name'], description=data.get('description')) # Create new Item
-    db.session.add(new_item) # Add it to the database session
-    db.session.commit()      # Commit (save) the changes to the database
-    return jsonify(new_item.to_dict()), 201 # Return the created item and 201 status
-
-# UPDATE an existing item
-@app.route('/api/items/<int:item_id>', methods=['PUT'])
-def update_item(item_id):
-    item = Item.query.get_or_404(item_id)
+# --- TIME STUDIES ---
+# POST create a new TimeStudy
+@app.route('/api/time_studies', methods=['POST'])
+def create_time_study():
     data = request.get_json()
 
-    if 'name' in data:
-        item.name = data['name']
-    if 'description' in data:
-        item.description = data['description']
+    # Basic validation
+    if not data or not data.get('name') or data.get('admin_id') is None:
+        return jsonify({'error': 'Missing required fields: name, admin_id'}), 400
 
-    db.session.commit()
-    return jsonify(item.to_dict())
+    admin = User.query.get(data['admin_id'])
+    if not admin:
+        return jsonify({'error': f"Admin with id {data['admin_id']} not found"}), 404
 
-# DELETE an item
-@app.route('/api/items/<int:item_id>', methods=['DELETE'])
-def delete_item(item_id):
-    item = Item.query.get_or_404(item_id)
-    db.session.delete(item)
-    db.session.commit()
-    return jsonify({'message': 'Item deleted successfully'}), 200 # Or use 204 No Content
+    new_study = TimeStudy(
+        name=data['name'],
+        estimated_total_time=data.get('estimated_total_time'),
+        status=data.get('status', 'not started'), # Default to 'not started' if not provided
+        admin_id=admin.id # Assign the admin
+    )
+    db.session.add(new_study)
+    # Must commit here so new_study gets an ID before adding steps/machinists if they depend on it immediately
+    # Or add them to the session and commit once at the end. Let's try committing once.
+
+    # Handle Steps (list of step objects expected in data)
+    if 'steps' in data and isinstance(data['steps'], list):
+        for step_data in data['steps']:
+            if not step_data.get('name') or step_data.get('order') is None:
+                # Rollback if there's an issue, or decide to skip invalid steps
+                db.session.rollback()
+                return jsonify({'error': 'Each step must have a name and order'}), 400
+            step = Step(
+                name=step_data['name'],
+                estimated_time=step_data.get('estimated_time'),
+                order=step_data['order'],
+                time_study=new_study # Associate with the new study
+            )
+            db.session.add(step)
+
+    # Handle Machinists (list of machinist user IDs expected in data)
+    if 'machinist_ids' in data and isinstance(data['machinist_ids'], list):
+        for machinist_id in data['machinist_ids']:
+            machinist = User.query.get(machinist_id)
+            if machinist:
+                new_study.machinists.append(machinist) # SQLAlchemy handles the association table
+            else:
+                # Decide how to handle: error out, or just log and skip?
+                print(f"Warning: Machinist with id {machinist_id} not found. Skipping.")
+
+    try:
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': 'Failed to create time study', 'details': str(e)}), 500
+        
+    return jsonify(new_study.to_dict()), 201
+
+# GET all TimeStudies
+@app.route('/api/time_studies', methods=['GET'])
+def get_time_studies():
+    studies = TimeStudy.query.all()
+    return jsonify([study.to_dict() for study in studies])
+
+# GET a single TimeStudy by ID
+@app.route('/api/time_studies/<int:study_id>', methods=['GET'])
+def get_time_study(study_id):
+    study = TimeStudy.query.get_or_404(study_id) # Returns 404 if not found
+    return jsonify(study.to_dict())
+
 
 
 # --- Run the App ---

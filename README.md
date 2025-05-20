@@ -1,2 +1,3 @@
 # TimeStudy
-ie senior project
+
+IE Project

@@ -8,7 +8,6 @@ export default function MachinistLayout() {
       <MachinistSidebar />
       <Box flex="1" p={6}>
         <Outlet />
-        <Box>Machinist Content would appear here</Box>
       </Box>
     </Flex>
   );

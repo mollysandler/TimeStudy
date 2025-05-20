@@ -48,6 +48,16 @@ export function AdminSidebar() {
             New Time Study
           </Button>
         </Link>
+        <Link to="/admin/machinist/new">
+          <Button
+            variant={location === "/admin/machinist/new" ? "solid" : "ghost"}
+            justifyContent="flex-start"
+            leftIcon={<AddIcon />}
+            w="full"
+          >
+            New Machinist
+          </Button>
+        </Link>
 
         <Text
           px={4}

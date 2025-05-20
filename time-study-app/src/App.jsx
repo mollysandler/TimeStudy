@@ -8,6 +8,7 @@ import AdminLayout from "./layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import TimeStudyDetailPage from "./pages/admin/TimeStudyDetailPage";
 import NewTimeStudyPage from "./pages/admin/NewTimeStudyPage";
+import NewMachinistPage from "./pages/admin/NewMachinistPage";
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<AdminDashboard />} />
         <Route path="time-studies/new" element={<NewTimeStudyPage />} />
+        <Route path="machinist/new" element={<NewMachinistPage />} />
         <Route path="time-studies/:studyId" element={<TimeStudyDetailPage />} />
       </Route>
     </Routes>

@@ -150,6 +150,26 @@ def get_time_study(study_id):
     study = TimeStudy.query.get_or_404(study_id) # Returns 404 if not found
     return jsonify(study.to_dict())
 
+# --- STEPS ---
+# POST add a step to a time study
+@app.route('/api/time_studies/<int:study_id>/steps', methods=['POST'])
+def add_step_to_time_study(study_id):
+    study = TimeStudy.query.get_or_404(study_id)
+    data = request.get_json()
+
+    if not data or not data.get('name') or data.get('order') is None:
+        return jsonify({'error': 'Step name and order are required'}), 400
+
+    new_step = Step(
+        name=data['name'],
+        estimated_time=data.get('estimated_time'),
+        order=data['order'],
+        time_study_id=study.id # or time_study = study
+    )
+    db.session.add(new_step)
+    db.session.commit()
+
+    return jsonify(new_step.to_dict()), 201
 
 
 # --- Run the App ---

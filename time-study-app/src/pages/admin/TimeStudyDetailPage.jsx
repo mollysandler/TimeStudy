@@ -14,68 +14,147 @@ import {
   TabPanels,
   Tabs,
   Text,
+  IconButton,
   VStack,
+  Spinner,
+  Alert,
+  AlertIcon,
+  Tag,
+  Step,
 } from "@chakra-ui/react";
-import { ArrowBackIcon, AddIcon } from "@chakra-ui/icons";
+import { ArrowBackIcon, AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { ProcessStepForm } from "../../components/admin/process-step-form";
 import { ProcessStepList } from "../../components/admin/process-step-list";
-import { PageHeader } from "../../components/page-header";
-import { Link, useParams } from "react-router-dom";
 
 export default function TimeStudyDetailPage() {
   const { studyId } = useParams();
+  const navigate = useNavigate();
 
-  // Mock data - would come from API in real implementation
-  const timeStudy = {
-    id: studyId,
-    name: "Engine Block Machining",
-    description: "Complete machining process for engine block model EB-2023",
-    steps: [
-      { id: "1", name: "Setup CNC machine", estimatedTime: 300 },
-      { id: "2", name: "Load material", estimatedTime: 120 },
-      { id: "3", name: "Run first operation", estimatedTime: 600 },
-      { id: "4", name: "Quality check", estimatedTime: 180 },
-    ],
-    assignments: [
-      {
-        id: "1",
-        machinistName: "John Doe",
-        machinistId: "m1",
-        machineId: "cnc1",
-        machineName: "CNC Mill #1",
-      },
-      {
-        id: "2",
-        machinistName: "Jane Smith",
-        machinistId: "m2",
-        machineId: "cnc2",
-        machineName: "CNC Mill #2",
-      },
-    ],
+  const [timeStudy, setTimeStudy] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  // Callback function to refetch data, useful after adding a step
+  const fetchTimeStudyDetails = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/time_studies/${studyId}`
+      );
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})); // Try to get error message from backend
+        throw new Error(
+          `HTTP error! status: ${response.status} - ${
+            errorData.error ||
+            response.statusText ||
+            "Failed to fetch time study details"
+          }`
+        );
+      }
+      const data = await response.json();
+      setTimeStudy(data);
+    } catch (e) {
+      console.error("Failed to fetch time study details:", e);
+      setError(e.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
+  useEffect(() => {
+    if (studyId) {
+      fetchTimeStudyDetails();
+    }
+  }, [studyId]);
+
+  // --- Loading and Error States ---
+  if (isLoading) {
+    return (
+      <Flex justifyContent="center" alignItems="center" height="300px">
+        <Spinner size="xl" />
+        <Text ml={4}>Loading time study details...</Text>
+      </Flex>
+    );
+  }
+
+  if (error) {
+    return (
+      <VStack spacing={6} align="stretch">
+        <Flex justifyContent="flex-end" alignItems="center" mb={4} mt={4}>
+          <Button
+            onClick={() => navigate("/admin/time-studies")}
+            leftIcon={<ArrowBackIcon />}
+            variant="outline"
+            size="sm"
+          >
+            Back to List
+          </Button>
+        </Flex>
+        <Alert status="error">
+          <AlertIcon />
+          Error fetching time study: {error}
+        </Alert>
+      </VStack>
+    );
+  }
+
+  if (!timeStudy) {
+    // Should ideally be caught by error state if fetch failed, but as a fallback
+    return <Text>Time study not found.</Text>;
+  }
+
+  // --- Main Content ---
   return (
     <VStack spacing={6} align="stretch">
       <Flex justifyContent="space-between" alignItems="center">
-        <PageHeader
-          title={timeStudy.name}
-          description={timeStudy.description}
-        />
-        <Link to="/admin">
+        <Box>
+          <Heading size="xl">{timeStudy.name}</Heading>
+          <Text color="gray.500" mt={1}>
+            Admin: {timeStudy.admin ? timeStudy.admin.username : "N/A"} |
+            Status:{" "}
+            <Tag
+              size="sm"
+              colorScheme={
+                timeStudy.status === "completed"
+                  ? "green"
+                  : timeStudy.status === "in progress"
+                  ? "blue"
+                  : "gray"
+              }
+            >
+              {timeStudy.status}
+            </Tag>
+          </Text>
+          <Text color="gray.500">
+            Est. Total Time: {timeStudy.estimated_total_time || "N/A"} mins
+          </Text>
+        </Box>
+        <Link to="/admin/time-studies">
+          {" "}
+          {/* Updated link to go back to the list */}
           <Button leftIcon={<ArrowBackIcon />} variant="outline" size="sm">
-            Back to Dashboard
+            Back to List
           </Button>
         </Link>
       </Flex>
 
-      <Tabs>
+      <Tabs isLazy>
+        {" "}
         <TabList>
-          <Tab>Process Steps</Tab>
-          <Tab>Assignments</Tab>
-          <Tab>Results</Tab>
+          <Tab>
+            Process Steps ({timeStudy.steps ? timeStudy.steps.length : 0})
+          </Tab>
+          <Tab>
+            Machinists ({timeStudy.machinists ? timeStudy.machinists.length : 0}
+            )
+          </Tab>
+          <Tab>Details & Results</Tab>
         </TabList>
-
         <TabPanels>
+          {/* --- Process Steps Tab --- */}
           <TabPanel>
             <VStack spacing={6} align="stretch">
               <Card>
@@ -90,12 +169,13 @@ export default function TimeStudyDetailPage() {
                       Manage the steps for this time study
                     </Text>
                   </Box>
-                  <Button leftIcon={<AddIcon />} size="sm">
-                    Add Step
-                  </Button>
                 </CardHeader>
                 <CardBody>
-                  <ProcessStepList steps={timeStudy.steps} />
+                  <ProcessStepList
+                    steps={timeStudy.steps || []}
+                    studyId={timeStudy.id}
+                    onDataChange={fetchTimeStudyDetails}
+                  />
                 </CardBody>
               </Card>
 
@@ -107,12 +187,16 @@ export default function TimeStudyDetailPage() {
                   </Text>
                 </CardHeader>
                 <CardBody>
-                  <ProcessStepForm studyId={studyId} />
+                  <ProcessStepForm
+                    studyId={timeStudy.id}
+                    onStepAdded={fetchTimeStudyDetails}
+                  />
                 </CardBody>
               </Card>
             </VStack>
           </TabPanel>
 
+          {/* --- Machinists (Assignments) Tab --- */}
           <TabPanel>
             <Card>
               <CardHeader
@@ -121,59 +205,134 @@ export default function TimeStudyDetailPage() {
                 alignItems="center"
               >
                 <Box>
-                  <Heading size="md">Machinist Assignments</Heading>
+                  <Heading size="md">Assigned Machinists</Heading>
                   <Text color="gray.500">
-                    Manage who is assigned to this time study
+                    View machinists assigned to this time study
                   </Text>
                 </Box>
-                <Button leftIcon={<AddIcon />} size="sm">
-                  Add Assignment
+                {/* Button to manage assignments - could open a modal */}
+                <Button
+                  leftIcon={<AddIcon />}
+                  size="sm"
+                  onClick={() => alert("Manage assignments (not implemented)")}
+                >
+                  Manage Assignments
                 </Button>
               </CardHeader>
               <CardBody>
-                {timeStudy.assignments.map((assignment) => (
-                  <Flex
-                    key={assignment.id}
-                    justifyContent="space-between"
-                    alignItems="center"
-                    p={4}
-                    mb={2}
-                    border="1px"
-                    borderColor="gray.200"
-                    borderRadius="md"
-                  >
-                    <Box>
-                      <Text fontWeight="medium">
-                        {assignment.machinistName}
-                      </Text>
-                      <Text fontSize="sm" color="gray.500">
-                        {assignment.machineName}
-                      </Text>
-                    </Box>
-                    <Flex gap={2}>
-                      <Button variant="outline" size="sm">
-                        Edit
-                      </Button>
-                      <Button colorScheme="red" size="sm">
-                        Remove
-                      </Button>
+                {timeStudy.machinists && timeStudy.machinists.length > 0 ? (
+                  timeStudy.machinists.map((machinist) => (
+                    <Flex
+                      key={machinist.id} // Use machinist.id as key
+                      justifyContent="space-between"
+                      alignItems="center"
+                      p={3} // Reduced padding
+                      mb={2}
+                      border="1px"
+                      borderColor="gray.200"
+                      borderRadius="md"
+                    >
+                      <Box>
+                        <Text fontWeight="medium">
+                          {machinist.username} (ID: {machinist.id})
+                        </Text>
+                        {/* If you add more details to machinist user, display here */}
+                      </Box>
+                      <Flex gap={2}>
+                        <IconButton
+                          icon={<EditIcon />}
+                          size="sm"
+                          variant="outline"
+                          aria-label="Edit Machinist"
+                          onClick={() =>
+                            alert(
+                              `Edit machinist ${machinist.id} (not implemented)`
+                            )
+                          }
+                        />
+                        <IconButton
+                          icon={<DeleteIcon />}
+                          size="sm"
+                          colorScheme="red"
+                          variant="ghost"
+                          aria-label="Remove Machinist"
+                          onClick={() =>
+                            alert(
+                              `Remove machinist ${machinist.id} (not implemented)`
+                            )
+                          }
+                        />
+                      </Flex>
                     </Flex>
-                  </Flex>
-                ))}
+                  ))
+                ) : (
+                  <Text color="gray.500">
+                    No machinists assigned to this study yet.
+                  </Text>
+                )}
               </CardBody>
             </Card>
           </TabPanel>
 
+          {/* --- Results/Details Tab --- */}
           <TabPanel>
             <Card>
               <CardHeader>
-                <Heading size="md">Time Study Results</Heading>
+                <Heading size="md">Time Study Details & Results</Heading>
                 <Text color="gray.500">
-                  View and analyze completed time studies
+                  View details and analyze completed time studies
                 </Text>
               </CardHeader>
               <CardBody>
-                <Text color="gray.500">No results available yet.</Text>
+                <VStack align="start" spacing={3}>
+                  <Text>
+                    <strong>ID:</strong> {timeStudy.id}
+                  </Text>
+                  <Text>
+                    <strong>Name:</strong> {timeStudy.name}
+                  </Text>
+                  <Text>
+                    <strong>Status:</strong>{" "}
+                    <Tag
+                      size="md"
+                      colorScheme={
+                        timeStudy.status === "completed"
+                          ? "green"
+                          : timeStudy.status === "in progress"
+                          ? "blue"
+                          : "gray"
+                      }
+                    >
+                      {timeStudy.status}
+                    </Tag>
+                  </Text>
+                  <Text>
+                    <strong>Admin:</strong>{" "}
+                    {timeStudy.admin ? timeStudy.admin.username : "N/A"}
+                  </Text>
+                  <Text>
+                    <strong>Estimated Total Time:</strong>{" "}
+                    {timeStudy.estimated_total_time || "N/A"} minutes
+                  </Text>
+                  <Text>
+                    <strong>Number of Steps:</strong>{" "}
+                    {timeStudy.steps ? timeStudy.steps.length : 0}
+                  </Text>
+                  <Text>
+                    <strong>Number of Machinists:</strong>{" "}
+                    {timeStudy.machinists ? timeStudy.machinists.length : 0}
+                  </Text>
+                  {/* If you add created_at to backend:
+                    <Text><strong>Created At:</strong> {timeStudy.created_at ? new Date(timeStudy.created_at).toLocaleString() : 'N/A'}</Text>
+                    */}
+                </VStack>
+                <Heading size="sm" mt={6} mb={3}>
+                  Results
+                </Heading>
+                <Text color="gray.500">
+                  No results available yet. (This section can be built out
+                  later)
+                </Text>
               </CardBody>
             </Card>
           </TabPanel>

@@ -190,7 +190,7 @@ export function TimeStudyForm() {
       setMachinistIdsInput("");
       setStatus("not started");
       setSteps([{ name: "", estimated_time: "", order: 1 }]);
-      navigate("/admin/time-studies"); // Navigate back to the list view
+      navigate("/admin"); // Navigate back to the list view
     } catch (error) {
       console.error("Failed to create time study:", error);
       toast({

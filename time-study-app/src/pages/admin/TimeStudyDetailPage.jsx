@@ -85,7 +85,7 @@ export default function TimeStudyDetailPage() {
       <VStack spacing={6} align="stretch">
         <Flex justifyContent="flex-end" alignItems="center" mb={4} mt={4}>
           <Button
-            onClick={() => navigate("/admin/time-studies")}
+            onClick={() => navigate("/admin")}
             leftIcon={<ArrowBackIcon />}
             variant="outline"
             size="sm"
@@ -132,7 +132,7 @@ export default function TimeStudyDetailPage() {
             Est. Total Time: {timeStudy.estimated_total_time || "N/A"} mins
           </Text>
         </Box>
-        <Link to="/admin/time-studies">
+        <Link to="/admin">
           {" "}
           {/* Updated link to go back to the list */}
           <Button leftIcon={<ArrowBackIcon />} variant="outline" size="sm">

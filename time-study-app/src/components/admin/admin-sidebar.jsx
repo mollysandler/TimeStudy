@@ -58,7 +58,7 @@ export function AdminSidebar() {
           </Button>
         </Link>
 
-        <Text
+        {/* <Text
           px={4}
           pt={6}
           pb={2}
@@ -67,35 +67,36 @@ export function AdminSidebar() {
           color="gray.500"
         >
           MANAGEMENT
-        </Text>
+        </Text> */}
 
-        <Button
+        {/* <Button
           variant="ghost"
           justifyContent="flex-start"
           leftIcon={<SettingsIcon />}
           w="full"
         >
           Machinists
-        </Button>
+        </Button> */}
 
-        <Button
+        {/* <Button
           variant="ghost"
           justifyContent="flex-start"
           leftIcon={<TimeIcon />}
           w="full"
         >
           Time Studies
-        </Button>
+        </Button> */}
 
-        <Button
+        {/* <Button
           variant="ghost"
           justifyContent="flex-start"
           leftIcon={<SettingsIcon />}
           w="full"
         >
           Settings
-        </Button>
+        </Button> */}
       </VStack>
+
       <Link to="/">
         <Button variant="outline" leftIcon={<ExternalLinkIcon />} w="full">
           Sign Out

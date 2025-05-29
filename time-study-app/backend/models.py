@@ -30,9 +30,9 @@ class Step(db.Model):
     name = db.Column(db.String(200), nullable=False) # Name of the step
     estimated_time = db.Column(db.Integer, nullable=True) # Estimated time in minutes (or seconds, be consistent)
     order = db.Column(db.Integer, nullable=False) # To maintain the order of steps
-
-    time_study_id = db.Column(db.Integer, db.ForeignKey('time_study.id'), nullable=False)
-    # The 'time_study' backref will be created by the relationship in TimeStudy model
+    actual_time = db.Column(db.Integer, nullable=True) # Actual time taken, in seconds
+    notes = db.Column(db.Text, nullable=True) # Optional notes for each step
+    time_study_id = db.Column(db.Integer, db.ForeignKey('time_study.id'), nullable=False) # The 'time_study' backref will be created by the relationship in TimeStudy model
 
     def to_dict(self):
         return {
@@ -40,6 +40,8 @@ class Step(db.Model):
             'name': self.name,
             'estimated_time': self.estimated_time,
             'order': self.order,
+            'actual_time': self.actual_time,
+            'notes': self.notes,
             'time_study_id': self.time_study_id
         }
 
@@ -49,7 +51,10 @@ class TimeStudy(db.Model):
     id = db.Column(db.Integer, primary_key=True) # Time Study unique ID
     name = db.Column(db.String(150), nullable=False) # Name of the study
     estimated_total_time = db.Column(db.Integer, nullable=True) # Estimated time in minutes (or seconds)
+    actual_total_time = db.Column(db.Integer, nullable=True) # Actual time taken, in seconds
     status = db.Column(db.String(50), default='not started', nullable=False) # 'not started', 'in progress', 'completed'
+    notes = db.Column(db.Text, nullable=True) # Overall notes, e.g., for scrapping
+    
 
     # Foreign Key for the Admin in charge
     admin_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
@@ -74,16 +79,23 @@ class TimeStudy(db.Model):
     # so you can do user.assigned_time_studies to get studies a machinist is on.
     machinists = db.relationship('User', secondary=time_study_machinists_association, lazy='subquery',
                                  backref=db.backref('assigned_time_studies', lazy=True))
+    
+    started_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
 
     def to_dict(self):
         return {
             'id': self.id,
             'name': self.name,
             'estimated_total_time': self.estimated_total_time,
+            'actual_total_time': self.actual_total_time,
             'number_of_steps': len(self.steps), # Calculated dynamically
             'status': self.status,
+            'notes': self.notes,
             'admin': self.admin.to_dict() if self.admin else None, # Include admin details
             'admin_id': self.admin_id,
             'steps': sorted([step.to_dict() for step in self.steps], key=lambda s: s['order']), # Include step details, sorted
-            'machinists': [machinist.to_dict() for machinist in self.machinists] # Include machinist details
+            'machinists': [machinist.to_dict() for machinist in self.machinists], # Include machinist details
+            'started_at': self.started_at.isoformat() if self.started_at else None,
+            'completed_at': self.completed_at.isoformat() if self.completed_at else None,
         }

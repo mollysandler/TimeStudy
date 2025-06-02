@@ -17,7 +17,7 @@ function App() {
 
       <Route path="/machinist" element={<MachinistLayout />}>
         <Route index element={<MachinistDashboard />} />
-        <Route path=":processId" element={<ProcessTimerPage />} />
+        <Route path=":studyId" element={<ProcessTimerPage />} />
       </Route>
 
       <Route path="/admin" element={<AdminLayout />}>

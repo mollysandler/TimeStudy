@@ -111,7 +111,7 @@ export function MachinistForm() {
 
         <Flex gap={4}>
           <Button type="submit" colorScheme="blue" flex="1">
-            Create Time Study
+            Add Machinist
           </Button>
           <Button type="button" variant="outline">
             Cancel

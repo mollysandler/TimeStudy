@@ -140,7 +140,7 @@ export function AssignmentList() {
               The link should go to a page where the machinist can interact with this specific study.
               The path `/machinist/${study.id}` seems appropriate.
             */}
-            <Link to={`/machinist/study/${study.id}`}>
+            <Link to={`/machinist/${study.id}`}>
               {" "}
               {/* Updated link for clarity */}
               <Button leftIcon={<TimeIcon />} w="full" colorScheme="blue">

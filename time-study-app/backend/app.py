@@ -150,6 +150,28 @@ def get_time_study(study_id):
     study = TimeStudy.query.get_or_404(study_id) # Returns 404 if not found
     return jsonify(study.to_dict())
 
+
+# PUT - UPDATE a TimeStudy (This is what you're missing for saving timers)
+@app.route('/api/time_studies/<int:study_id>', methods=['PUT']) # Add this route
+def update_time_study(study_id):
+    study = TimeStudy.query.get_or_404(study_id)
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'Request body cannot be empty'}), 400
+
+    if 'status' in data:
+        study.status = data['status']
+    if 'actual_total_time' in data: # Expecting seconds
+        study.actual_total_time = data['actual_total_time']
+    if 'notes' in data: # For overall study notes (e.g., scrap reason)
+        study.notes = data['notes']
+    # Add any other fields from TimeStudy model you want to be updatable
+    # e.g., name, estimated_total_time (though less common to update estimates after starting)
+
+    db.session.commit()
+    return jsonify(study.to_dict())
+
 # --- STEPS ---
 # POST add a step to a time study
 @app.route('/api/time_studies/<int:study_id>/steps', methods=['POST'])
@@ -170,6 +192,25 @@ def add_step_to_time_study(study_id):
     db.session.commit()
 
     return jsonify(new_step.to_dict()), 201
+
+# PUT - UPDATE a Step (This is what you're missing for saving individual step timers)
+@app.route('/api/steps/<int:step_id>', methods=['PUT']) # Add this route
+def update_step(step_id):
+    step = Step.query.get_or_404(step_id)
+    data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'Request body cannot be empty'}), 400
+
+    if 'actual_time' in data: # Expecting seconds
+        step.actual_time = data['actual_time']
+    if 'notes' in data:
+        step.notes = data['notes']
+    # Add any other fields from Step model you want to be updatable
+    # e.g., name, estimated_time, order
+
+    db.session.commit()
+    return jsonify(step.to_dict())
 
 
 # --- Run the App ---

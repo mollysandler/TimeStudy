@@ -93,7 +93,6 @@ export function MachinistForm() {
                 name="study"
                 value={formData.study}
                 onChange={handleChange}
-                placeholder="e.g., CNC Mill, Lathe, etc."
               />
             </FormControl>
 

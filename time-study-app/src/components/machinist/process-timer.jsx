@@ -7,6 +7,14 @@ import {
   Card,
   Flex,
   Textarea,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalFooter,
+  ModalBody,
+  ModalCloseButton,
+  useDisclosure,
   Text,
   useToast,
   VStack,
@@ -23,73 +31,75 @@ export function ProcessTimer({
   formatTimeForDisplay, // Function to format time (HH:MM:SS)
   studyStatus, // Current status of the whole time study
 }) {
-  const [isRunning, setIsRunning] = useState(initialIsRunning);
+  const [localIsRunning, setLocalIsRunning] = useState(false); // Timer's own running state
   const [time, setTime] = useState(initialTime); // Time in seconds
   const [notes, setNotes] = useState(initialNotes);
-  const [showScrapNotes, setShowScrapNotes] = useState(false);
+  const [showScrapInput, setShowScrapInput] = useState(false);
   const toast = useToast();
   const intervalRef = useRef(null); // Use ref for interval
-
-  // Synchronize with props
-  useEffect(() => {
-    setIsRunning(initialIsRunning);
-  }, [initialIsRunning]);
+  const {
+    isOpen: isScrapConfirmOpen,
+    onOpen: onScrapConfirmOpen,
+    onClose: onScrapConfirmClose,
+  } = useDisclosure(); // Modal state
 
   useEffect(() => {
     setTime(initialTime);
-  }, [initialTime]);
+    setNotes(initialNotes || ""); // Ensure notes is not null/undefined
+    if (studyStatus === "in progress" && initialIsRunning) {
+      setLocalIsRunning(true);
+    } else {
+      setLocalIsRunning(false);
+    }
+  }, [initialTime, initialIsRunning, initialNotes, studyStatus]);
 
   useEffect(() => {
-    setNotes(initialNotes);
-  }, [initialNotes]);
-
-  useEffect(() => {
-    if (isRunning) {
-      intervalRef.current = setInterval(() => {
-        setTime((prevTime) => prevTime + 1);
-      }, 1000);
+    if (localIsRunning) {
+      intervalRef.current = setInterval(
+        () => setTime((prev) => prev + 1),
+        1000
+      );
     } else {
       clearInterval(intervalRef.current);
     }
     return () => clearInterval(intervalRef.current);
-  }, [isRunning]);
+  }, [localIsRunning]);
 
-  const handleActualStart = () => {
+  const handleUIApplicationStart = () => {
     if (studyStatus === "completed" || studyStatus === "scrapped") {
       toast({
-        title: "Cannot start a completed or scrapped study.",
+        title: "Study is already completed or scrapped.",
         status: "warning",
-        duration: 3000,
-        isClosable: true,
       });
       return;
     }
-    setIsRunning(true); // UI update
-    if (onStart) onStart(); // Notify parent to update backend status
+    setLocalIsRunning(true);
+    if (onStart) onStart();
   };
 
-  const handleActualStop = () => {
-    setIsRunning(false); // UI update
-    if (onStop) onStop(time, notes); // Notify parent with final time and current notes
-    // Parent will show its own "completed" toast after backend update
+  const handleUIApplicationStop = () => {
+    setLocalIsRunning(false);
+    if (onStop) onStop(time, notes);
   };
 
-  const handleActualReset = () => {
-    // Resetting a running study might need confirmation or specific backend logic
-    // For now, it just resets local UI state. Parent is not notified of a "reset" directly.
-    // If a reset should clear backend `actual_total_time`, that's a separate action.
+  const handleUIApplicationReset = () => {
+    if (studyStatus === "completed" || studyStatus === "scrapped") {
+      toast({
+        title: "Cannot reset a completed or scrapped study's timer.",
+        status: "warning",
+      });
+      return;
+    }
     if (
       window.confirm(
-        "Are you sure you want to reset the timer? This will not save the current time."
+        "Are you sure you want to reset this timer? The current time will be lost from view and not saved."
       )
     ) {
       setTime(0);
-      // setNotes(""); // Optionally reset notes too
-      setIsRunning(false); // Stop the timer if it was running
-      // If onStop was meant to clear backend time on reset, you might call it:
-      // if (onStop) onStop(0, notes); // but this would mark it as 'completed' with 0 time
+      // Do not change localIsRunning or call onStop from here for reset.
+      // Reset is a UI-only action for the timer value itself.
       toast({
-        title: "Timer Reset",
+        title: "Timer UI Reset",
         status: "info",
         duration: 2000,
         isClosable: true,
@@ -97,43 +107,42 @@ export function ProcessTimer({
     }
   };
 
-  const handleActualScrap = () => {
-    if (studyStatus === "completed") {
+  const handleInitiateScrap = () => {
+    if (studyStatus === "completed" || studyStatus === "scrapped") {
+      toast({ title: `Study is already ${studyStatus}.`, status: "info" });
+      return;
+    }
+    setShowScrapInput(true); // Show the notes input
+  };
+
+  const handleConfirmScrapWithModal = () => {
+    if (!notes.trim()) {
       toast({
-        title: "Cannot scrap a completed study.",
+        title: "Please provide a reason for scrapping.",
         status: "warning",
         duration: 3000,
         isClosable: true,
       });
       return;
     }
-    if (showScrapNotes) {
-      // This is the "Confirm Scrap" click
-      if (!notes.trim()) {
-        toast({
-          title: "Please provide a reason for scrapping.",
-          status: "warning",
-          duration: 3000,
-          isClosable: true,
-        });
-        return;
-      }
-      setIsRunning(false); // UI update
-      if (onScrap) onScrap(notes); // Notify parent with scrap notes
-      // Parent will show its own "scrapped" toast
-      // Resetting time here might be redundant if parent re-fetches and updates initialTime
-      // setTime(0);
-      setShowScrapNotes(false);
-    } else {
-      setShowScrapNotes(true); // Show the notes input
-    }
+    onScrapConfirmOpen(); // Open confirmation modal
   };
 
-  const handleCancelScrap = () => {
-    setShowScrapNotes(false);
+  const executeScrap = () => {
+    setLocalIsRunning(false);
+    if (onScrap) onScrap(notes);
+    setShowScrapInput(false);
+    onScrapConfirmClose(); // Close modal
   };
 
-  const isDisabled = studyStatus === "completed" || studyStatus === "scrapped";
+  const handleCancelScrapInput = () => {
+    setShowScrapInput(false);
+    // Optionally reset notes to initialNotes if they were being edited for scrap
+    // setNotes(initialNotes || "");
+  };
+
+  const isStudyEffectivelyDisabled =
+    studyStatus === "completed" || studyStatus === "scrapped";
 
   return (
     <VStack spacing={4} align="stretch">
@@ -142,69 +151,67 @@ export function ProcessTimer({
         justifyContent="center"
         p={6}
         border="1px"
-        borderColor={isDisabled ? "gray.300" : "gray.200"}
+        borderColor={isStudyEffectivelyDisabled ? "gray.300" : "gray.200"}
         borderRadius="lg"
-        bg={isDisabled ? "gray.100" : "gray.50"}
-        opacity={isDisabled ? 0.7 : 1}
+        bg={isStudyEffectivelyDisabled ? "gray.100" : "gray.50"}
+        opacity={isStudyEffectivelyDisabled ? 0.7 : 1}
       >
         <Text
           fontSize="5xl"
           fontFamily="mono"
           fontWeight="bold"
-          color={isDisabled ? "gray.500" : "inherit"}
+          color={isStudyEffectivelyDisabled ? "gray.500" : "inherit"}
         >
           {formatTimeForDisplay ? formatTimeForDisplay(time) : `${time}s`}
         </Text>
       </Flex>
-
       <Flex wrap="wrap" gap={2}>
-        {!isRunning ? (
+        {!localIsRunning ? (
           <Button
-            onClick={handleActualStart}
+            onClick={handleUIApplicationStart}
             flex="1"
             leftIcon={<TimeIcon />}
             size="lg"
             colorScheme="blue"
-            isDisabled={isDisabled}
+            isDisabled={isStudyEffectivelyDisabled}
           >
             Start Timer
           </Button>
         ) : (
           <Button
-            onClick={handleActualStop}
+            onClick={handleUIApplicationStop}
             flex="1"
-            leftIcon={<CheckIcon />} // Changed from TimeIcon for "Stop"
+            leftIcon={<CheckIcon />}
             size="lg"
-            colorScheme="green" // Or "blue"
-            isDisabled={isDisabled}
+            colorScheme="green"
+            isDisabled={isStudyEffectivelyDisabled}
           >
             Stop & Save
           </Button>
         )}
 
         <Button
-          onClick={handleActualReset}
+          onClick={handleUIApplicationReset}
           variant="outline"
           leftIcon={<RepeatIcon />}
           size="lg"
-          isDisabled={isRunning || isDisabled} // Disable reset if running or study completed/scrapped
+          isDisabled={localIsRunning || isStudyEffectivelyDisabled}
         >
           Reset Timer
         </Button>
 
         <Button
-          onClick={handleActualScrap}
+          onClick={handleInitiateScrap}
           colorScheme="red"
           leftIcon={<CloseIcon />}
           size="lg"
-          isDisabled={studyStatus === "completed"} // Can scrap if 'in progress' or 'not started'
+          isDisabled={isStudyEffectivelyDisabled}
         >
-          {showScrapNotes ? "Confirm Scrap" : "Scrap Study"}
+          {showScrapInput ? "Confirm Scrap" : "Scrap Study"}
         </Button>
       </Flex>
-
-      {showScrapNotes && (
-        <Card p={4} borderColor="red.500" borderWidth="1px">
+      {showScrapInput && (
+        <Card p={4} borderColor="red.500" borderWidth="1px" mt={4}>
           <Text fontWeight="medium" mb={2}>
             Please provide a reason for scrapping:
           </Text>
@@ -213,32 +220,24 @@ export function ProcessTimer({
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Enter reason for scrapping this time study..."
             mb={4}
-            isDisabled={isDisabled}
           />
           <Flex gap={2}>
             <Button
-              onClick={handleActualScrap} // This is the "Confirm Scrap" button inside the scrap card
+              onClick={handleConfirmScrapWithModal}
               colorScheme="red"
-              isDisabled={!notes.trim() || isDisabled}
+              isDisabled={!notes.trim()}
             >
               Confirm Scrap
             </Button>
-            <Button
-              onClick={handleCancelScrap}
-              variant="outline"
-              isDisabled={isDisabled}
-            >
+            <Button onClick={handleCancelScrapInput} variant="outline">
               Cancel
             </Button>
           </Flex>
         </Card>
       )}
-
       {/* General Notes section - always visible if not scrapping */}
-      {!showScrapNotes && (
-        <Box mt={showScrapNotes ? 0 : 4}>
-          {" "}
-          {/* Adjust margin if scrap notes were shown */}
+      {!showScrapInput && (
+        <Box mt={4}>
           <Text fontWeight="medium" mb={2}>
             Overall Study Notes:
           </Text>
@@ -246,10 +245,38 @@ export function ProcessTimer({
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add any general notes about this time study..."
-            isDisabled={isDisabled || isRunning} // Disable notes when timer is running or study is done
+            isDisabled={isStudyEffectivelyDisabled || localIsRunning}
           />
         </Box>
       )}
+
+      {/* Scrap Confirmation Modal */}
+      <Modal
+        isOpen={isScrapConfirmOpen}
+        onClose={onScrapConfirmClose}
+        isCentered
+      >
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Confirm Scrap</ModalHeader>
+          <ModalCloseButton />
+          <ModalBody>
+            Are you sure you want to scrap this time study? This action cannot
+            be undone.
+            <Text mt={2} fontSize="sm" color="gray.600">
+              Reason: {notes}
+            </Text>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onScrapConfirmClose}>
+              Cancel
+            </Button>
+            <Button colorScheme="red" onClick={executeScrap}>
+              Yes, Scrap Study
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </VStack>
   );
 }

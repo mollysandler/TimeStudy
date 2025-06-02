@@ -21,7 +21,6 @@ import {
 import { ArrowBackIcon } from "@chakra-ui/icons";
 import { ProcessTimer } from "../../components/machinist/process-timer";
 import { StepTimerList } from "../../components/machinist/step-timer-list";
-// import { PageHeader } from "../../components/page-header";
 import { Link, useParams, useNavigate } from "react-router-dom";
 
 export default function ProcessTimerPage() {
@@ -33,7 +32,9 @@ export default function ProcessTimerPage() {
   const [timeStudy, setTimeStudy] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isProcessRunningState, setIsProcessRunningState] = useState(false); // Overall process state
+
+  const [isOverallProcessActive, setIsOverallProcessActive] = useState(false);
+  // const [isProcessRunningState, setIsProcessRunningState] = useState(false); // Overall process state
 
   // --- Data Fetching ---
   const fetchTimeStudy = useCallback(async () => {
@@ -54,7 +55,7 @@ export default function ProcessTimerPage() {
       const data = await response.json();
       setTimeStudy(data);
       // Initialize running state based on fetched status
-      setIsProcessRunningState(data.status === "in progress");
+      setIsOverallProcessActive(data.status === "in progress");
     } catch (e) {
       console.error("Failed to fetch time study:", e);
       setError(e.message);
@@ -90,6 +91,7 @@ export default function ProcessTimerPage() {
       }
       const updatedStudyData = await response.json();
       setTimeStudy(updatedStudyData); // Update local state with response from backend
+      setIsOverallProcessActive(updatedStudyData.status === "in progress"); // Sync overall active state
       return updatedStudyData;
     } catch (e) {
       console.error("Error updating time study:", e);
@@ -104,57 +106,116 @@ export default function ProcessTimerPage() {
     }
   };
 
-  // --- Event Handlers from ProcessTimer ---
-  const handleProcessStart = async () => {
-    setIsProcessRunningState(true);
+  // // --- Event Handlers from ProcessTimer ---
+  // const handleProcessStart = async () => {
+  //   setIsProcessRunningState(true);
+  //   try {
+  //     await updateStudyOnBackend({
+  //       status: "in progress" /*, started_at: new Date().toISOString() */,
+  //     });
+  //     // ProcessTimer's internal start will be called by its own button
+  //   } catch (e) {
+  //     setIsProcessRunningState(false); // Revert UI state on error
+  //   }
+  // };
+
+  // const handleProcessStop = async (totalTimeInSeconds, notes) => {
+  //   setIsProcessRunningState(false);
+  //   try {
+  //     await updateStudyOnBackend({
+  //       status: "completed",
+  //       actual_total_time: totalTimeInSeconds,
+  //       notes: notes || timeStudy.notes, // Preserve existing notes if new ones aren't provided
+  //       // completed_at: new Date().toISOString()
+  //     });
+  //     toast({
+  //       title: "Time Study Completed",
+  //       description: `Total actual time: ${formatTime(totalTimeInSeconds)}`,
+  //       status: "success",
+  //       duration: 5000,
+  //       isClosable: true,
+  //     });
+  //   } catch (e) {
+  //     // Error already toasted by updateStudyOnBackend
+  //   }
+  // };
+
+  // const handleProcessScrap = async (notes) => {
+  //   setIsProcessRunningState(false);
+  //   try {
+  //     await updateStudyOnBackend({
+  //       status: "scrapped",
+  //       notes: notes, // Scrap reason
+  //       actual_total_time: null, // Or keep current if relevant
+  //     });
+  //     toast({
+  //       title: "Time Study Scrapped",
+  //       description: "The study has been marked as scrapped.",
+  //       status: "error", // Or "warning"
+  //       duration: 5000,
+  //       isClosable: true,
+  //     });
+  //   } catch (e) {
+  //     // Error already toasted by updateStudyOnBackend
+  //   }
+  // };
+
+  // --- Event Handlers from ProcessTimer for OVERALL STUDY ---
+  const handleOverallProcessStart = async () => {
+    // This is called when the MAIN "Start Timer" button in ProcessTimer is clicked
     try {
-      await updateStudyOnBackend({
-        status: "in progress" /*, started_at: new Date().toISOString() */,
+      await updateStudyOnBackend({ status: "in progress" });
+      setIsOverallProcessActive(true); // Reflect that the process has been commanded to start
+      // The ProcessTimer component will start its own internal timer
+      toast({
+        title: "Overall Process Started",
+        status: "info",
+        duration: 2000,
+        isClosable: true,
       });
-      // ProcessTimer's internal start will be called by its own button
     } catch (e) {
-      setIsProcessRunningState(false); // Revert UI state on error
+      // If backend update fails, we don't set isOverallProcessActive to true
     }
   };
 
-  const handleProcessStop = async (totalTimeInSeconds, notes) => {
-    setIsProcessRunningState(false);
+  const handleOverallProcessStop = async (
+    totalTimeInSeconds,
+    notesFromTimer
+  ) => {
+    // This is called when the MAIN "Stop & Save" button in ProcessTimer is clicked
     try {
       await updateStudyOnBackend({
         status: "completed",
         actual_total_time: totalTimeInSeconds,
-        notes: notes || timeStudy.notes, // Preserve existing notes if new ones aren't provided
-        // completed_at: new Date().toISOString()
+        notes: notesFromTimer || timeStudy?.notes, // Use notes from timer, fallback to existing
       });
+      setIsOverallProcessActive(false); // Reflect the process is stopped
       toast({
-        title: "Time Study Completed",
+        title: "Time Study Completed & Saved",
         description: `Total actual time: ${formatTime(totalTimeInSeconds)}`,
         status: "success",
         duration: 5000,
         isClosable: true,
       });
     } catch (e) {
-      // Error already toasted by updateStudyOnBackend
+      /* Error already handled by updateStudyOnBackend */
     }
   };
 
-  const handleProcessScrap = async (notes) => {
-    setIsProcessRunningState(false);
+  const handleOverallProcessScrap = async (notesFromTimer) => {
+    // This is called when the MAIN "Scrap Study" button in ProcessTimer is confirmed
     try {
       await updateStudyOnBackend({
         status: "scrapped",
-        notes: notes, // Scrap reason
-        actual_total_time: null, // Or keep current if relevant
+        notes: notesFromTimer,
+        actual_total_time: null, // Or preserve if needed
       });
+      setIsOverallProcessActive(false);
       toast({
-        title: "Time Study Scrapped",
-        description: "The study has been marked as scrapped.",
-        status: "error", // Or "warning"
-        duration: 5000,
-        isClosable: true,
+        /* ... scrap toast ... */
       });
     } catch (e) {
-      // Error already toasted by updateStudyOnBackend
+      /* Error already handled */
     }
   };
 
@@ -225,12 +286,12 @@ export default function ProcessTimerPage() {
         </CardHeader>
         <CardBody>
           <ProcessTimer
-            initialTime={timeStudy.actual_total_time || 0} // Load actual time if study was already in progress/completed
+            initialTime={timeStudy.actual_total_time || 0}
             initialIsRunning={timeStudy.status === "in progress"}
             initialNotes={timeStudy.notes || ""}
-            onStart={handleProcessStart} // This will now primarily update backend status
-            onStop={handleProcessStop} // This will send final time and notes to backend
-            onScrap={handleProcessScrap} // This will send scrap notes to backend
+            onStart={handleOverallProcessStart} // Renamed for clarity
+            onStop={handleOverallProcessStop} // Renamed for clarity
+            onScrap={handleOverallProcessScrap} // Renamed for clarity
             formatTimeForDisplay={formatTime} // Pass formatter for internal toasts
             studyStatus={timeStudy.status} // Pass current study status
           />
@@ -249,7 +310,7 @@ export default function ProcessTimerPage() {
         <CardBody>
           <StepTimerList
             steps={timeStudy.steps || []}
-            isProcessRunning={isProcessRunningState} // Use the page-level state
+            isOverallProcessActive={isOverallProcessActive}
             studyId={timeStudy.id}
             onStepTimeUpdate={fetchTimeStudy} // To refresh data if StepTimerList updates a step
             disabled={

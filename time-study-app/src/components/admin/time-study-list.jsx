@@ -1,5 +1,4 @@
 import {
-  Box,
   Button,
   Card,
   CardBody,
@@ -12,15 +11,30 @@ import {
   Spinner,
   Alert,
   AlertIcon,
+  Box,
+  useToast,
+  AlertDialog,
+  AlertDialogBody,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogContent,
+  AlertDialogOverlay,
+  useDisclosure,
 } from "@chakra-ui/react";
 import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
 import { Link } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export function TimeStudyList() {
   const [timeStudies, setTimeStudies] = useState([]); //state for storing studies
   const [isLoading, setIsLoading] = useState(true); //state for loading status
   const [error, setError] = useState(null); //state for any errors
+
+  // For delete confirmation modal
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [studyToDelete, setStudyToDelete] = useState(null);
+  const cancelRef = useRef();
+  const toast = useToast();
 
   useEffect(() => {
     // Define the async function to fetch data
@@ -50,6 +64,54 @@ export function TimeStudyList() {
 
     fetchTimeStudies();
   }, []); //run when we refresh
+
+  const handleDeleteClick = (study) => {
+    setStudyToDelete(study);
+    onOpen(); // Open confirmation dialog
+  };
+
+  const confirmDeleteStudy = async () => {
+    if (!studyToDelete) return;
+    try {
+      const response = await fetch(
+        `http://localhost:8080/api/time_studies/${studyToDelete.id}`,
+        {
+          method: "DELETE",
+        }
+      );
+      const responseData = await response.json().catch(() => null); // Try to get JSON, but allow for 204 no content
+
+      if (!response.ok) {
+        throw new Error(
+          responseData?.error || `Failed to delete study: ${response.status}`
+        );
+      }
+
+      toast({
+        title: "Time Study Deleted",
+        description: `"${studyToDelete.name}" was successfully deleted.`,
+        status: "success",
+        duration: 3000,
+        isClosable: true,
+      });
+      // Refresh the list: either filter locally or re-fetch
+      setTimeStudies((prevStudies) =>
+        prevStudies.filter((s) => s.id !== studyToDelete.id)
+      );
+      // Or: await fetchTimeStudies();
+    } catch (err) {
+      toast({
+        title: "Deletion Failed",
+        description: err.message,
+        status: "error",
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      onClose();
+      setStudyToDelete(null);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -93,38 +155,11 @@ export function TimeStudyList() {
       </Flex>
 
       <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={6}>
-        {/*
-          Now we map over the 'timeStudies' state which comes from the API.
-          The structure of 'study' will be based on your `to_dict()` method in Flask:
-          {
-            "id": 1,
-            "name": "CNC Part Alpha Study",
-            "estimated_total_time": 120,
-            "number_of_steps": 4, // This is `len(self.steps)` from your backend
-            "status": "not started",
-            "admin": { "id": 1, "username": "admin_user" },
-            "admin_id": 1,
-            "steps": [
-              { "id": 1, "name": "Setup Machine", "estimated_time": 30, "order": 1, "time_study_id": 1 },
-              ...
-            ],
-            "machinists": [
-              { "id": 2, "username": "machinist_alice" },
-              { "id": 3, "username": "machinist_bob" }
-            ]
-          }
-          We need to adjust what we display on the card to match this.
-        */}
         {timeStudies.map((study) => (
           <Card key={study.id}>
             <CardHeader>
               <Heading size="md">{study.name}</Heading>
-              {/* 'description' is not directly in our backend model for TimeStudy.
-                  You might want to add it to the backend model, or use another field,
-                  or perhaps display some of the step names or admin name here.
-                  For now, I'll comment it out or you can adapt.
-              */}
-              {/* <Text color="gray.500">{study.description}</Text> */}
+
               <Text color="gray.500" fontSize="sm">
                 Admin: {study.admin ? study.admin.username : "N/A"}
               </Text>
@@ -141,13 +176,6 @@ export function TimeStudyList() {
                   <Text color="gray.500">Machinists:</Text>
                   <Text fontWeight="medium">{study.machinists.length}</Text>
 
-                  {/* 'createdAt' is not in our backend model yet.
-                      You could add a `created_at = db.Column(db.DateTime, default=datetime.utcnow)`
-                      to your TimeStudy model in Flask if you need this.
-                      For now, I'll comment it out.
-                  */}
-                  {/* <Text color="gray.500">Created:</Text>
-                  <Text fontWeight="medium">{study.createdAt}</Text> */}
                   <Text color="gray.500">Est. Total Time:</Text>
                   <Text fontWeight="medium">
                     {study.estimated_total_time || "N/A"} mins
@@ -169,9 +197,7 @@ export function TimeStudyList() {
                   p={0}
                   minW={10}
                   h={10}
-                  onClick={() =>
-                    alert(`Delete study ID: ${study.id} (not implemented yet)`)
-                  }
+                  onClick={() => handleDeleteClick(study)}
                 >
                   <DeleteIcon />
                 </Button>
@@ -180,6 +206,34 @@ export function TimeStudyList() {
           </Card>
         ))}
       </SimpleGrid>
+      {/* Confirmation Dialog */}
+      <AlertDialog
+        isOpen={isOpen}
+        leastDestructiveRef={cancelRef}
+        onClose={onClose}
+        isCentered
+      >
+        <AlertDialogOverlay>
+          <AlertDialogContent>
+            <AlertDialogHeader fontSize="lg" fontWeight="bold">
+              Delete Time Study
+            </AlertDialogHeader>
+            <AlertDialogBody>
+              Are you sure you want to delete the time study "
+              <strong>{studyToDelete?.name}</strong>"? This action cannot be
+              undone and will delete all associated steps.
+            </AlertDialogBody>
+            <AlertDialogFooter>
+              <Button ref={cancelRef} onClick={onClose}>
+                Cancel
+              </Button>
+              <Button colorScheme="red" onClick={confirmDeleteStudy} ml={3}>
+                Delete
+              </Button>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialogOverlay>
+      </AlertDialog>
     </Box>
   );
 }

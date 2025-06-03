@@ -103,7 +103,6 @@ def create_time_study():
     )
     db.session.add(new_study)
     # Must commit here so new_study gets an ID before adding steps/machinists if they depend on it immediately
-    # Or add them to the session and commit once at the end. Let's try committing once.
 
     # Handle Steps (list of step objects expected in data)
     if 'steps' in data and isinstance(data['steps'], list):
@@ -127,7 +126,7 @@ def create_time_study():
             if machinist:
                 new_study.machinists.append(machinist) # SQLAlchemy handles the association table
             else:
-                # Decide how to handle: error out, or just log and skip?
+                # this is not real error handling 
                 print(f"Warning: Machinist with id {machinist_id} not found. Skipping.")
 
     try:
@@ -151,8 +150,8 @@ def get_time_study(study_id):
     return jsonify(study.to_dict())
 
 
-# PUT - UPDATE a TimeStudy (This is what you're missing for saving timers)
-@app.route('/api/time_studies/<int:study_id>', methods=['PUT']) # Add this route
+# PUT - UPDATE a TimeStudy
+@app.route('/api/time_studies/<int:study_id>', methods=['PUT'])
 def update_time_study(study_id):
     study = TimeStudy.query.get_or_404(study_id)
     data = request.get_json()
@@ -162,15 +161,29 @@ def update_time_study(study_id):
 
     if 'status' in data:
         study.status = data['status']
-    if 'actual_total_time' in data: # Expecting seconds
+    if 'actual_total_time' in data: 
         study.actual_total_time = data['actual_total_time']
-    if 'notes' in data: # For overall study notes (e.g., scrap reason)
+    if 'notes' in data: 
         study.notes = data['notes']
-    # Add any other fields from TimeStudy model you want to be updatable
-    # e.g., name, estimated_total_time (though less common to update estimates after starting)
 
     db.session.commit()
     return jsonify(study.to_dict())
+
+# DELETE a TimeStudy
+@app.route('/api/time_studies/<int:study_id>', methods=['DELETE'])
+def delete_time_study(study_id):
+    study = TimeStudy.query.get_or_404(study_id) # Find the study or return 404
+
+    try:
+        # Because of `cascade="all, delete-orphan"` on TimeStudy.steps,
+        # deleting the TimeStudy will also delete its associated Step records.
+        db.session.delete(study)
+        db.session.commit()
+        return jsonify({'message': f'Time Study "{study.name}" and its steps deleted successfully.'}), 200
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error deleting time study {study_id}: {str(e)}")
+        return jsonify({'error': 'Failed to delete time study', 'details': str(e)}), 500
 
 # --- STEPS ---
 # POST add a step to a time study
@@ -186,15 +199,15 @@ def add_step_to_time_study(study_id):
         name=data['name'],
         estimated_time=data.get('estimated_time'),
         order=data['order'],
-        time_study_id=study.id # or time_study = study
+        time_study_id=study.id
     )
     db.session.add(new_step)
     db.session.commit()
 
     return jsonify(new_step.to_dict()), 201
 
-# PUT - UPDATE a Step (This is what you're missing for saving individual step timers)
-@app.route('/api/steps/<int:step_id>', methods=['PUT']) # Add this route
+# PUT - UPDATE a Step 
+@app.route('/api/steps/<int:step_id>', methods=['PUT']) 
 def update_step(step_id):
     step = Step.query.get_or_404(step_id)
     data = request.get_json()
@@ -202,15 +215,27 @@ def update_step(step_id):
     if not data:
         return jsonify({'error': 'Request body cannot be empty'}), 400
 
-    if 'actual_time' in data: # Expecting seconds
+    if 'actual_time' in data: 
         step.actual_time = data['actual_time']
     if 'notes' in data:
         step.notes = data['notes']
-    # Add any other fields from Step model you want to be updatable
-    # e.g., name, estimated_time, order
 
     db.session.commit()
     return jsonify(step.to_dict())
+
+# DELETE a Step
+@app.route('/api/steps/<int:step_id>', methods=['DELETE'])
+def delete_step(step_id):
+    step = Step.query.get_or_404(step_id) # Find the step or return 404
+
+    try:
+        db.session.delete(step)
+        db.session.commit()
+        return jsonify({'message': f'Step "{step.name}" deleted successfully.'}), 200
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Error deleting step {step_id}: {str(e)}")
+        return jsonify({'error': 'Failed to delete step', 'details': str(e)}), 500
 
 
 

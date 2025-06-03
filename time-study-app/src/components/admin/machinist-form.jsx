@@ -5,115 +5,163 @@ import {
   Button,
   FormControl,
   FormLabel,
+  FormErrorMessage,
   Input,
-  SimpleGrid,
-  Textarea,
+  Select, // For selecting the role
   useToast,
   VStack,
   Flex,
+  Heading,
 } from "@chakra-ui/react";
+import { useNavigate } from "react-router-dom"; // Optional: for redirecting
 
 export function MachinistForm() {
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    study: "",
-    department: "",
-  });
+  // State for individual fields, easier for validation and API payload
+  const [username, setUsername] = useState("");
+  const [role, setRole] = useState("machinist"); // Default role to machinist
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const toast = useToast();
+  const navigate = useNavigate(); // Optional
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     // Validate form
-    if (!formData.name || !formData.description) {
+    if (!username.trim()) {
       toast({
         title: "Validation Error",
-        description: "Please fill in all required fields.",
+        description: "Machinist Name (Username) is required.",
         status: "error",
         duration: 5000,
         isClosable: true,
       });
+      setIsSubmitting(false);
       return;
     }
 
-    // Submit form - would send to API in real implementation
-    console.log("Form submitted:", formData);
+    const userData = {
+      username: username.trim(),
+      role: role, // Send the selected role
+    };
 
-    toast({
-      title: "New Machinist Added",
-      description: "Your new machinist has been added successfully.",
-      status: "success",
-      duration: 5000,
-      isClosable: true,
-    });
+    try {
+      const response = await fetch("http://localhost:8080/api/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(userData),
+      });
 
-    // Reset form
-    setFormData({
-      name: "",
-      description: "",
-      machine: "",
-      department: "",
-    });
+      const responseData = await response.json(); // Try to parse JSON regardless of status for error messages
+
+      if (!response.ok) {
+        // Use error message from backend if available, otherwise a generic one
+        const errorMessage =
+          responseData.error || `HTTP error! Status: ${response.status}`;
+        throw new Error(errorMessage);
+      }
+
+      toast({
+        title: "User Created",
+        description: `${
+          role.charAt(0).toUpperCase() + role.slice(1)
+        } "${username}" has been added successfully.`,
+        status: "success",
+        duration: 5000,
+        isClosable: true,
+      });
+
+      // Reset form
+      setUsername("");
+      setRole("machinist"); // Reset to default role
+
+      // Optional: Navigate to a user list page or back
+      // navigate("/admin/users");
+    } catch (error) {
+      console.error("Failed to add user:", error);
+      toast({
+        title: "Creation Failed",
+        description: error.message,
+        status: "error",
+        duration: 9000,
+        isClosable: true,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit}>
-      <VStack spacing={6} align="stretch">
-        <VStack spacing={4} align="stretch">
-          <FormControl isRequired>
-            <FormLabel>Machinist Name</FormLabel>
-            <Input
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Format: First Last"
-            />
-          </FormControl>
+      <VStack
+        spacing={6}
+        align="stretch"
+        p={5}
+        borderWidth="1px"
+        borderRadius="lg"
+      >
+        <Heading size="md" mb={2}>
+          Add New User (Machinist/Admin)
+        </Heading>
+        <FormControl
+          isRequired
+          isInvalid={
+            !username.trim() &&
+            isSubmitting /* Show error if submitting and empty */
+          }
+        >
+          <FormLabel>Name (Username)</FormLabel>
+          <Input
+            name="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="Enter user's name (will be username)"
+          />
+          {!username.trim() && isSubmitting && (
+            <FormErrorMessage>Name is required.</FormErrorMessage>
+          )}
+        </FormControl>
 
-          <FormControl isRequired>
-            <FormLabel>Role</FormLabel>
-            <Textarea
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Describe the main role of this machinist"
-            />
-          </FormControl>
+        <FormControl isRequired>
+          <FormLabel>Role</FormLabel>
+          <Select value={role} onChange={(e) => setRole(e.target.value)}>
+            <option value="machinist">Machinist</option>
+            <option value="admin">Admin</option>
+            {/* Add other roles if needed */}
+          </Select>
+        </FormControl>
 
-          <SimpleGrid columns={{ base: 1, md: 2 }} spacing={6}>
-            <FormControl>
-              <FormLabel>Time Study</FormLabel>
-              <Input
-                name="study"
-                value={formData.study}
-                onChange={handleChange}
-              />
-            </FormControl>
+        {/*
+          The "Time Study" and "Department" fields have been removed as they
+          don't directly map to our current simple User model.
+          Assigning users to studies is done when creating/editing a TimeStudy.
+          Department could be a future enhancement to the User model.
+        */}
 
-            <FormControl>
-              <FormLabel>Department</FormLabel>
-              <Input
-                name="department"
-                value={formData.department}
-                onChange={handleChange}
-                placeholder="e.g., Machining, Assembly, etc."
-              />
-            </FormControl>
-          </SimpleGrid>
-        </VStack>
-
-        <Flex gap={4}>
-          <Button type="submit" colorScheme="blue" flex="1">
-            Add Machinist
+        <Flex gap={4} mt={4}>
+          <Button
+            type="submit"
+            colorScheme="blue"
+            flex="1"
+            isLoading={isSubmitting}
+            loadingText="Adding..."
+          >
+            Add User
           </Button>
-          <Button type="button" variant="outline">
-            Cancel
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              setUsername("");
+              setRole("machinist");
+              // navigate(-1); // Or navigate to a specific path
+            }}
+            isDisabled={isSubmitting}
+          >
+            Cancel / Reset
           </Button>
         </Flex>
       </VStack>

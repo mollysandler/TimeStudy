@@ -54,7 +54,7 @@ export function AdminSidebar() {
             leftIcon={<AddIcon />}
             w="full"
           >
-            New Machinist
+            New Empoyee
           </Button>
         </Link>
 

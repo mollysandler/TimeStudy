@@ -8,7 +8,7 @@ export default function NewMachinistPage() {
   return (
     <VStack spacing={6} align="stretch">
       <Flex justifyContent="space-between" alignItems="center">
-        <PageHeader title="Add New Machinist" description="Add new employees" />
+        <PageHeader title="Add New Employee" description="Add new employees" />
         <Link to="/admin">
           <Button leftIcon={<ArrowBackIcon />} variant="outline" size="sm">
             Back to Dashboard

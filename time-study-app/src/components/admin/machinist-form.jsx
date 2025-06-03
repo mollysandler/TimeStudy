@@ -104,7 +104,7 @@ export function MachinistForm() {
         borderRadius="lg"
       >
         <Heading size="md" mb={2}>
-          Add New User (Machinist/Admin)
+          Add New User
         </Heading>
         <FormControl
           isRequired

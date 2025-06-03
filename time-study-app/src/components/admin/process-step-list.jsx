@@ -2,10 +2,10 @@ import { Box, Button, Flex, Text, VStack } from "@chakra-ui/react";
 import { EditIcon, DeleteIcon } from "@chakra-ui/icons";
 
 export function ProcessStepList({ steps }) {
-  const formatTime = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-    return `${minutes} min`;
-  };
+  // const formatTime = (seconds) => {
+  //   const minutes = Math.floor(seconds / 60);
+  //   return `${minutes} min`;
+  // };
 
   return (
     <VStack spacing={2} align="stretch">
@@ -35,7 +35,13 @@ export function ProcessStepList({ steps }) {
             <Box>
               <Text fontWeight="medium">{step.name}</Text>
               <Text fontSize="sm" color="gray.500">
-                Estimated time: {formatTime(step.estimatedTime)}
+                Estimated time:{" "}
+                {typeof step.estimated_time === "number" &&
+                !isNaN(step.estimated_time)
+                  ? `${step.estimated_time} ${
+                      step.estimated_time === 1 ? "minute" : "minutes"
+                    }`
+                  : "N/A"}
               </Text>
             </Box>
           </Flex>

@@ -19,12 +19,17 @@ import {
   Spinner,
   Alert,
   AlertIcon,
+  Stat,
+  StatLabel,
+  StatNumber,
+  StatHelpText,
+  SimpleGrid as ResultsGrid,
+  Divider as ResultsDivider,
   Tag,
-  Step,
 } from "@chakra-ui/react";
 import { ArrowBackIcon, AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
 import { Link, useParams, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { ProcessStepForm } from "../../components/admin/process-step-form";
 import { ProcessStepList } from "../../components/admin/process-step-list";
 
@@ -70,43 +75,54 @@ export default function TimeStudyDetailPage() {
     }
   }, [studyId]);
 
-  // --- Loading and Error States ---
-  if (isLoading) {
-    return (
-      <Flex justifyContent="center" alignItems="center" height="300px">
-        <Spinner size="xl" />
-        <Text ml={4}>Loading time study details...</Text>
-      </Flex>
-    );
-  }
-
-  if (error) {
-    return (
-      <VStack spacing={6} align="stretch">
-        <Flex justifyContent="flex-end" alignItems="center" mb={4} mt={4}>
-          <Button
-            onClick={() => navigate("/admin")}
-            leftIcon={<ArrowBackIcon />}
-            variant="outline"
-            size="sm"
-          >
-            Back to List
-          </Button>
-        </Flex>
-        <Alert status="error">
-          <AlertIcon />
-          Error fetching time study: {error}
-        </Alert>
-      </VStack>
-    );
-  }
+  const formatTime = useCallback((seconds) => {
+    // Ensure formatTime is available or define it here
+    if (seconds === null || seconds === undefined || isNaN(seconds)) {
+      return "N/A";
+    }
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    return [
+      hours.toString().padStart(2, "0"),
+      minutes.toString().padStart(2, "0"),
+      secs.toString().padStart(2, "0"),
+    ].join(":");
+  }, []);
 
   if (!timeStudy) {
-    // Should ideally be caught by error state if fetch failed, but as a fallback
-    return <Text>Time study not found.</Text>;
+    // --- Loading and Error States ---
+    if (isLoading) {
+      return (
+        <Flex justifyContent="center" alignItems="center" height="300px">
+          <Spinner size="xl" />
+          <Text ml={4}>Loading time study details...</Text>
+        </Flex>
+      );
+    }
+
+    if (error) {
+      return (
+        <VStack spacing={6} align="stretch">
+          <Flex justifyContent="flex-end" alignItems="center" mb={4} mt={4}>
+            <Button
+              onClick={() => navigate("/admin")}
+              leftIcon={<ArrowBackIcon />}
+              variant="outline"
+              size="sm"
+            >
+              Back to List
+            </Button>
+          </Flex>
+          <Alert status="error">
+            <AlertIcon />
+            Error fetching time study: {error}
+          </Alert>
+        </VStack>
+      );
+    }
   }
 
-  // --- Main Content ---
   return (
     <VStack spacing={6} align="stretch">
       <Flex justifyContent="space-between" alignItems="center">
@@ -134,7 +150,6 @@ export default function TimeStudyDetailPage() {
         </Box>
         <Link to="/admin">
           {" "}
-          {/* Updated link to go back to the list */}
           <Button leftIcon={<ArrowBackIcon />} variant="outline" size="sm">
             Back to List
           </Button>
@@ -173,8 +188,8 @@ export default function TimeStudyDetailPage() {
                 <CardBody>
                   <ProcessStepList
                     steps={timeStudy?.steps || []}
-                    studyId={timeStudy?.id} // Pass studyId if needed for other actions (like edit)
-                    onStepDeleted={fetchTimeStudyDetails} // <<< PASS THE CALLBACK HERE
+                    studyId={timeStudy?.id}
+                    onStepDeleted={fetchTimeStudyDetails}
                   />
                 </CardBody>
               </Card>
@@ -210,7 +225,7 @@ export default function TimeStudyDetailPage() {
                     View machinists assigned to this time study
                   </Text>
                 </Box>
-                {/* Button to manage assignments - could open a modal */}
+
                 <Button
                   leftIcon={<AddIcon />}
                   size="sm"
@@ -223,10 +238,10 @@ export default function TimeStudyDetailPage() {
                 {timeStudy.machinists && timeStudy.machinists.length > 0 ? (
                   timeStudy.machinists.map((machinist) => (
                     <Flex
-                      key={machinist.id} // Use machinist.id as key
+                      key={machinist.id}
                       justifyContent="space-between"
                       alignItems="center"
-                      p={3} // Reduced padding
+                      p={3}
                       mb={2}
                       border="1px"
                       borderColor="gray.200"
@@ -236,7 +251,6 @@ export default function TimeStudyDetailPage() {
                         <Text fontWeight="medium">
                           {machinist.username} (ID: {machinist.id})
                         </Text>
-                        {/* If you add more details to machinist user, display here */}
                       </Box>
                       <Flex gap={2}>
                         <IconButton
@@ -278,61 +292,187 @@ export default function TimeStudyDetailPage() {
           <TabPanel>
             <Card>
               <CardHeader>
-                <Heading size="md">Time Study Details & Results</Heading>
+                <Heading size="md">Time Study Summary & Results</Heading>
                 <Text color="gray.500">
-                  View details and analyze completed time studies
+                  Detailed information and recorded times for this study.
                 </Text>
               </CardHeader>
               <CardBody>
-                <VStack align="start" spacing={3}>
-                  <Text>
-                    <strong>ID:</strong> {timeStudy.id}
-                  </Text>
-                  <Text>
-                    <strong>Name:</strong> {timeStudy.name}
-                  </Text>
-                  <Text>
-                    <strong>Status:</strong>{" "}
-                    <Tag
-                      size="md"
-                      colorScheme={
-                        timeStudy.status === "completed"
-                          ? "green"
-                          : timeStudy.status === "in progress"
-                          ? "blue"
-                          : "gray"
-                      }
+                <VStack align="start" spacing={4} divider={<ResultsDivider />}>
+                  {/* General Study Details Section */}
+                  <Box w="full">
+                    <Heading
+                      size="sm"
+                      mb={3}
+                      textTransform="uppercase"
+                      color="gray.600"
                     >
-                      {timeStudy.status}
-                    </Tag>
-                  </Text>
-                  <Text>
-                    <strong>Admin:</strong>{" "}
-                    {timeStudy.admin ? timeStudy.admin.username : "N/A"}
-                  </Text>
-                  <Text>
-                    <strong>Estimated Total Time:</strong>{" "}
-                    {timeStudy.estimated_total_time || "N/A"} minutes
-                  </Text>
-                  <Text>
-                    <strong>Number of Steps:</strong>{" "}
-                    {timeStudy.steps ? timeStudy.steps.length : 0}
-                  </Text>
-                  <Text>
-                    <strong>Number of Machinists:</strong>{" "}
-                    {timeStudy.machinists ? timeStudy.machinists.length : 0}
-                  </Text>
-                  {/* If you add created_at to backend:
-                    <Text><strong>Created At:</strong> {timeStudy.created_at ? new Date(timeStudy.created_at).toLocaleString() : 'N/A'}</Text>
-                    */}
+                      Study Information
+                    </Heading>
+                    <ResultsGrid columns={{ base: 1, md: 2 }} spacing={4}>
+                      <Stat>
+                        <StatLabel>Study ID</StatLabel>
+                        <StatNumber>{timeStudy.id}</StatNumber>
+                      </Stat>
+                      <Stat>
+                        <StatLabel>Study Name</StatLabel>
+                        <StatNumber>{timeStudy.name}</StatNumber>
+                      </Stat>
+                      <Stat>
+                        <StatLabel>Status</StatLabel>
+                        <StatNumber>
+                          <Tag
+                            size="md"
+                            colorScheme={
+                              timeStudy.status === "completed"
+                                ? "green"
+                                : timeStudy.status === "in progress"
+                                ? "blue"
+                                : timeStudy.status === "scrapped"
+                                ? "red"
+                                : "gray"
+                            }
+                          >
+                            {timeStudy.status}
+                          </Tag>
+                        </StatNumber>
+                      </Stat>
+                      <Stat>
+                        <StatLabel>Admin</StatLabel>
+                        <StatNumber>
+                          {timeStudy.admin?.username || "N/A"}
+                        </StatNumber>
+                      </Stat>
+                      <Stat>
+                        <StatLabel>Estimated Total Time</StatLabel>
+                        <StatNumber>
+                          {timeStudy.estimated_total_time || "0"} minutes
+                        </StatNumber>
+                      </Stat>
+                      <Stat>
+                        <StatLabel>Actual Total Time</StatLabel>
+                        <StatNumber
+                          color={
+                            timeStudy.status === "completed"
+                              ? "green.500"
+                              : "gray.500"
+                          }
+                        >
+                          {formatTime(timeStudy.actual_total_time)}
+                        </StatNumber>
+                        {timeStudy.estimated_total_time &&
+                          timeStudy.actual_total_time &&
+                          timeStudy.status === "completed" && (
+                            <StatHelpText>
+                              Variance:{" "}
+                              {formatTime(
+                                Math.abs(
+                                  timeStudy.estimated_total_time * 60 -
+                                    timeStudy.actual_total_time
+                                )
+                              )}
+                              {timeStudy.estimated_total_time * 60 -
+                                timeStudy.actual_total_time >
+                              0
+                                ? " (Faster)"
+                                : " (Slower)"}
+                            </StatHelpText>
+                          )}
+                      </Stat>
+                      <Stat>
+                        <StatLabel>Number of Steps</StatLabel>
+                        <StatNumber>{timeStudy.steps?.length || 0}</StatNumber>
+                      </Stat>
+                      <Stat>
+                        <StatLabel>Number of Machinists</StatLabel>
+                        <StatNumber>
+                          {timeStudy.machinists?.length || 0}
+                        </StatNumber>
+                      </Stat>
+                      {timeStudy.notes && (
+                        <Stat gridColumn="span 2">
+                          {" "}
+                          {/* Make notes span full width if 2 columns */}
+                          <StatLabel>Overall Study Notes</StatLabel>
+                          <Text fontSize="sm" whiteSpace="pre-wrap">
+                            {timeStudy.notes}
+                          </Text>
+                        </Stat>
+                      )}
+                    </ResultsGrid>
+                  </Box>
+
+                  {/* Results Section - Step Timings */}
+                  <Box w="full">
+                    <Heading
+                      size="sm"
+                      mt={6}
+                      mb={3}
+                      textTransform="uppercase"
+                      color="gray.600"
+                    >
+                      Step Results
+                    </Heading>
+                    {timeStudy.status === "not started" && (
+                      <Text color="gray.500">
+                        This time study has not been started yet, so there are
+                        no step results.
+                      </Text>
+                    )}
+                    {(timeStudy.status === "in progress" ||
+                      timeStudy.status === "completed" ||
+                      timeStudy.status === "scrapped") &&
+                      (!timeStudy.steps || timeStudy.steps.length === 0) && (
+                        <Text color="gray.500">
+                          No steps defined for this study.
+                        </Text>
+                      )}
+
+                    {timeStudy.steps &&
+                      timeStudy.steps.length > 0 &&
+                      (timeStudy.status === "in progress" ||
+                        timeStudy.status === "completed" ||
+                        timeStudy.status === "scrapped") && (
+                        <VStack spacing={3} align="stretch">
+                          {timeStudy.steps
+                            .sort((a, b) => a.order - b.order)
+                            .map((step) => (
+                              <Flex
+                                key={step.id}
+                                justifyContent="space-between"
+                                alignItems="center"
+                                p={3}
+                                borderWidth="1px"
+                                borderColor="gray.200"
+                                borderRadius="md"
+                              >
+                                <Box>
+                                  <Text fontWeight="medium">
+                                    Step {step.order}: {step.name}
+                                  </Text>
+                                  <Text fontSize="xs" color="gray.500">
+                                    Est:{" "}
+                                    {step.estimated_time !== null
+                                      ? `${step.estimated_time} min`
+                                      : "N/A"}
+                                  </Text>
+                                </Box>
+                                <Text
+                                  fontWeight="bold"
+                                  color={
+                                    step.actual_time !== null
+                                      ? "green.600"
+                                      : "gray.500"
+                                  }
+                                >
+                                  Actual: {formatTime(step.actual_time)}
+                                </Text>
+                              </Flex>
+                            ))}
+                        </VStack>
+                      )}
+                  </Box>
                 </VStack>
-                <Heading size="sm" mt={6} mb={3}>
-                  Results
-                </Heading>
-                <Text color="gray.500">
-                  No results available yet. (This section can be built out
-                  later)
-                </Text>
               </CardBody>
             </Card>
           </TabPanel>

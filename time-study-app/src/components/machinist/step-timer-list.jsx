@@ -1,4 +1,3 @@
-// frontend/src/components/machinist/step-timer-list.js (Conceptual)
 "use client";
 import {
   VStack,

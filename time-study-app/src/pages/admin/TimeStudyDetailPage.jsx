@@ -172,9 +172,9 @@ export default function TimeStudyDetailPage() {
                 </CardHeader>
                 <CardBody>
                   <ProcessStepList
-                    steps={timeStudy.steps || []}
-                    studyId={timeStudy.id}
-                    onDataChange={fetchTimeStudyDetails}
+                    steps={timeStudy?.steps || []}
+                    studyId={timeStudy?.id} // Pass studyId if needed for other actions (like edit)
+                    onStepDeleted={fetchTimeStudyDetails} // <<< PASS THE CALLBACK HERE
                   />
                 </CardBody>
               </Card>

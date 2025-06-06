@@ -1,3 +1,4 @@
+import React from "react";
 import { VStack } from "@chakra-ui/react";
 import { TimeStudyList } from "../../components/admin/time-study-list";
 import { PageHeader } from "../../components/page-header";

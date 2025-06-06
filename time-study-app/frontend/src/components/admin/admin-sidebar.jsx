@@ -1,3 +1,4 @@
+import React from "react";
 import { Button, Flex, Text, VStack } from "@chakra-ui/react";
 import {
   SettingsIcon,

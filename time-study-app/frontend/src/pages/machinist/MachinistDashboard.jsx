@@ -1,3 +1,4 @@
+import React from "react";
 import { VStack } from "@chakra-ui/react";
 import { AssignmentList } from "../../components/machinist/assignment-list";
 import { PageHeader } from "../../components/page-header";

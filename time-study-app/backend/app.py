@@ -3,9 +3,26 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from models import db, User, TimeStudy, Step
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # --- Configuration ---
 app = Flask(__name__)
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+if not DATABASE_URL: # This is a true fallback i tihnk
+    basedir = os.path.abspath(os.path.dirname(__file__))
+    instance_path = os.path.join(basedir, 'instance')
+    if not os.path.exists(instance_path):
+        os.makedirs(instance_path)
+    db_path = os.path.join(instance_path, 'items.db')
+    DATABASE_URL = f'sqlite:///{db_path}'
+    print(f"WARNING: DATABASE_URL not found in environment or .env, using default SQLite: {DATABASE_URL}")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
+
 
 # bsolute path of the directory where app.py is located
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -238,7 +255,7 @@ def delete_step(step_id):
         return jsonify({'error': 'Failed to delete step', 'details': str(e)}), 500
 
 
-
-# --- Run the App ---
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=8080)
+# this is only for dev
+# # --- Run the App ---
+# if __name__ == '__main__':
+#     app.run(debug=True, host='0.0.0.0', port=8080)

@@ -1,69 +1,52 @@
 import os
+from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from models import db, User, TimeStudy, Step
-from dotenv import load_dotenv
 
 load_dotenv()
 
-# --- Configuration ---
 app = Flask(__name__)
 
+# --- Configuration ---
 DATABASE_URL = os.environ.get('DATABASE_URL')
-
-if not DATABASE_URL: # This is a true fallback i tihnk
+if not DATABASE_URL:
+    # Fallback for local development if DATABASE_URL is not in .env or environment
     basedir = os.path.abspath(os.path.dirname(__file__))
     instance_path = os.path.join(basedir, 'instance')
     if not os.path.exists(instance_path):
         os.makedirs(instance_path)
     db_path = os.path.join(instance_path, 'items.db')
     DATABASE_URL = f'sqlite:///{db_path}'
-    print(f"WARNING: DATABASE_URL not found in environment or .env, using default SQLite: {DATABASE_URL}")
+    print(f"WARNING: DATABASE_URL not found, using default SQLite: {DATABASE_URL}")
 
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-
-
-# bsolute path of the directory where app.py is located
-basedir = os.path.abspath(os.path.dirname(__file__))
-
-# Define the path to the instance folder, relative to the app.py file
-# This ensures the instance folder is always looked for next to app.py
-instance_path = os.path.join(basedir, 'instance')
-
-# Create the instance folder if it doesn't exist
-if not os.path.exists(instance_path):
-    try:
-        os.makedirs(instance_path)
-        print(f"Created instance folder at: {instance_path}")
-    except OSError as e:
-        print(f"Error creating instance folder {instance_path}: {e}")
-        # Optionally, raise an exception or exit if this is critical
-        # raise
-
-# Set the SQLAlchemy database URI using the absolute path
-# The 'sqlite:///' prefix is for an absolute path on Unix-like systems
-# or a relative path from the drive root on Windows.
-# For SQLite, if the path doesn't start with a slash, it's relative to the CWD.
-# To ensure it's always relative to our instance_path, we construct it carefully.
-db_path = os.path.join(instance_path, 'items.db')
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{db_path}' # Note the 3 slashes for an absolute path
-
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # --- Initialize Extensions ---
-CORS(app)
+# For Render, set PROD_FRONTEND_URL in environment variables
+# PROD_FRONTEND_URL = os.environ.get('PROD_FRONTEND_URL')
+# origins = ["http://localhost:5173"] # Your local Vite dev server
+# if PROD_FRONTEND_URL:
+#     origins.append(PROD_FRONTEND_URL)
+# CORS(app, resources={r"/api/*": {"origins": origins}})
+CORS(app, resources={r"/api/*": {"origins": "*"}}) # Keep it open for now during debugging
+
 db.init_app(app)
 
-# --- Database Creation (Run once) ---
-# This context is needed for SQLAlchemy to know about your app
+# --- Database Creation ---
 with app.app_context():
     try:
-        db.create_all() # Creates the database tables based on your models if they don't exist
-        print(f"Database tables created/verified. DB should be at: {db_path}")
+        db.create_all()
+        # The print statement about db_path is only relevant for SQLite
+        # For PostgreSQL, tables are created in the remote DB.
+        if 'sqlite' in DATABASE_URL:
+             print(f"Database tables created/verified. DB should be at: {DATABASE_URL.replace('sqlite:///', '')}")
+        else:
+             print(f"Database tables created/verified for: {DATABASE_URL.split('@')[-1]}") # Prints DB host/name
     except Exception as e:
         print(f"Error during db.create_all(): {e}")
-        # Log the full traceback for detailed debugging if needed
         import traceback
         traceback.print_exc()
 
@@ -257,5 +240,5 @@ def delete_step(step_id):
 
 # this is only for dev
 # # --- Run the App ---
-# if __name__ == '__main__':
-#     app.run(debug=True, host='0.0.0.0', port=8080)
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=8080)

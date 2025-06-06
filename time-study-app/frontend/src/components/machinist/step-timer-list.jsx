@@ -126,14 +126,11 @@ function StepTimerItem({
       // Add step-specific notes to payload if you implement that feature
       // if (stepNotes) payload.notes = stepNotes;
 
-      const response = await fetch(
-        `http://localhost:8080/api/steps/${step.id}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`/api/steps/${step.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));

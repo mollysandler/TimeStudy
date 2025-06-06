@@ -47,7 +47,7 @@ export function MachinistForm() {
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/users", {
+      const response = await fetch("/api/users", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

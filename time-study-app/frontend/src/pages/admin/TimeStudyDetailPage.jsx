@@ -58,9 +58,7 @@ export default function TimeStudyDetailPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/time_studies/${studyId}`
-      );
+      const response = await fetch(`/api/time_studies/${studyId}`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({})); // Try to get error message from backend
         throw new Error(

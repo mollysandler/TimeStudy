@@ -41,9 +41,7 @@ export default function ProcessTimerPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/time_studies/${studyId}`
-      );
+      const response = await fetch(`/api/time_studies/${studyId}`);
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(
@@ -73,14 +71,11 @@ export default function ProcessTimerPage() {
   // --- API Update Function ---
   const updateStudyOnBackend = async (payload) => {
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/time_studies/${studyId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        }
-      );
+      const response = await fetch(`/api/time_studies/${studyId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(

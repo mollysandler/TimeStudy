@@ -80,16 +80,13 @@ export function ProcessStepForm({ studyId, onStepAdded }) {
     };
 
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/time_studies/${studyId}/steps`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(stepData),
-        }
-      );
+      const response = await fetch(`/api/time_studies/${studyId}/steps`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(stepData),
+      });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({

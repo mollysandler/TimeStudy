@@ -30,7 +30,7 @@ export function AssignmentList() {
 
       try {
         // Fetch all time studies (same endpoint as admin list for now)
-        const response = await fetch("http://localhost:8080/api/time_studies");
+        const response = await fetch("/api/time_studies");
 
         if (!response.ok) {
           throw new Error(

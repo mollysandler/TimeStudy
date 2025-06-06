@@ -25,7 +25,7 @@ export function MachinistSidebar() {
       try {
         // TODO: When auth is implemented, fetch studies for the specific logged-in machinist.
         // For now, fetching all studies.
-        const response = await fetch("http://localhost:8080/api/time_studies");
+        const response = await fetch("/api/time_studies");
         if (!response.ok) {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }

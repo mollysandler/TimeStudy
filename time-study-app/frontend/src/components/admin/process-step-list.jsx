@@ -36,12 +36,9 @@ export function ProcessStepList({ steps, studyId, onStepDeleted }) {
     try {
       // Using the /api/steps/:step_id endpoint
 
-      const response = await fetch(
-        `http://localhost:8080/api/steps/${stepToDelete.id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/steps/${stepToDelete.id}`, {
+        method: "DELETE",
+      });
       const responseData = await response.json().catch(() => null);
 
       if (!response.ok) {

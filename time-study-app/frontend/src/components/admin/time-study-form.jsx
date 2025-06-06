@@ -50,7 +50,7 @@ export function TimeStudyForm() {
     const fetchUsers = async () => {
       setIsLoadingUsers(true);
       try {
-        const response = await fetch("http://localhost:8080/api/users");
+        const response = await fetch("/api/users");
         if (!response.ok) {
           throw new Error("Failed to fetch users");
         }
@@ -155,7 +155,7 @@ export function TimeStudyForm() {
     };
 
     try {
-      const response = await fetch("http://localhost:8080/api/time_studies", {
+      const response = await fetch("/api/time_studies", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

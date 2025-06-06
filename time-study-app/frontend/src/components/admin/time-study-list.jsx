@@ -51,7 +51,7 @@ export function TimeStudyList() {
 
       try {
         // Your Flask backend API endpoint for getting all time studies
-        const response = await fetch("http://localhost:8080/api/time_studies");
+        const response = await fetch("/api/time_studies");
 
         if (!response.ok) {
           throw new Error(
@@ -80,12 +80,9 @@ export function TimeStudyList() {
   const confirmDeleteStudy = async () => {
     if (!studyToDelete) return;
     try {
-      const response = await fetch(
-        `http://localhost:8080/api/time_studies/${studyToDelete.id}`,
-        {
-          method: "DELETE",
-        }
-      );
+      const response = await fetch(`/api/time_studies/${studyToDelete.id}`, {
+        method: "DELETE",
+      });
       const responseData = await response.json().catch(() => null); // Try to get JSON, but allow for 204 no content
 
       if (!response.ok) {

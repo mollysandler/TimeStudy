@@ -26,12 +26,24 @@ import {
   SimpleGrid as ResultsGrid,
   Divider as ResultsDivider,
   Tag,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  Button as ChakraButton, //to avoid naming issues with Button
 } from "@chakra-ui/react";
-import { ArrowBackIcon, AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import {
+  ArrowBackIcon,
+  AddIcon,
+  EditIcon,
+  DeleteIcon,
+  DownloadIcon,
+} from "@chakra-ui/icons";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { ProcessStepForm } from "../../components/admin/process-step-form";
 import { ProcessStepList } from "../../components/admin/process-step-list";
+import { exportToCSV, exportToExcel } from "../../utils/exportData";
 
 export default function TimeStudyDetailPage() {
   const { studyId } = useParams();
@@ -89,6 +101,34 @@ export default function TimeStudyDetailPage() {
       secs.toString().padStart(2, "0"),
     ].join(":");
   }, []);
+
+  const handleExport = async (format) => {
+    // <--- Added async
+    if (!timeStudy) {
+      console.error("No time study data available to export."); // Add a log
+      return;
+    }
+    // Add a log to confirm the function is called
+    console.log(`Exporting time study ID ${timeStudy.id} as ${format}`);
+
+    const filenameBase = `TimeStudy_${timeStudy.id}_${timeStudy.name.replace(
+      /\s+/g,
+      "_"
+    )}`;
+
+    try {
+      // Add try-catch around export calls for better error visibility
+      if (format === "csv") {
+        exportToCSV(timeStudy, `${filenameBase}.csv`);
+      } else if (format === "excel") {
+        await exportToExcel(timeStudy, `${filenameBase}.xlsx`); // <--- Added await
+      }
+    } catch (exportError) {
+      console.error(`Error during ${format} export:`, exportError);
+      // Optionally show a toast to the user
+      // toast({ title: "Export Failed", description: "Could not generate the file.", status: "error" });
+    }
+  };
 
   if (!timeStudy) {
     // --- Loading and Error States ---
@@ -154,6 +194,24 @@ export default function TimeStudyDetailPage() {
             Back to List
           </Button>
         </Link>
+        <Menu>
+          <MenuButton
+            as={ChakraButton}
+            rightIcon={<DownloadIcon />}
+            colorScheme="teal"
+            variant="solid"
+          >
+            Export Study
+          </MenuButton>
+          <MenuList>
+            <MenuItem onClick={() => handleExport("csv")}>
+              Export as CSV
+            </MenuItem>
+            <MenuItem onClick={() => handleExport("excel")}>
+              Export as Excel
+            </MenuItem>
+          </MenuList>
+        </Menu>
       </Flex>
 
       <Tabs isLazy>

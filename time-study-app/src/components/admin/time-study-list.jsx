@@ -20,10 +20,16 @@ import {
   AlertDialogContent,
   AlertDialogOverlay,
   useDisclosure,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  IconButton,
 } from "@chakra-ui/react";
-import { AddIcon, EditIcon, DeleteIcon } from "@chakra-ui/icons";
+import { AddIcon, EditIcon, DeleteIcon, DownloadIcon } from "@chakra-ui/icons";
 import { Link } from "react-router-dom";
 import { useState, useEffect, useRef } from "react";
+import { exportToCSV, exportToExcel } from "../../utils/exportData";
 
 export function TimeStudyList() {
   const [timeStudies, setTimeStudies] = useState([]); //state for storing studies
@@ -113,6 +119,18 @@ export function TimeStudyList() {
     }
   };
 
+  const handleExport = (study, format) => {
+    const filenameBase = `TimeStudy_${study.id}_${study.name.replace(
+      /\s+/g,
+      "_"
+    )}`;
+    if (format === "csv") {
+      exportToCSV(study, `${filenameBase}.csv`);
+    } else if (format === "excel") {
+      exportToExcel(study, `${filenameBase}.xlsx`);
+    }
+  };
+
   if (isLoading) {
     return (
       <Flex justifyContent="center" alignItems="center" height="200px">
@@ -158,8 +176,29 @@ export function TimeStudyList() {
         {timeStudies.map((study) => (
           <Card key={study.id}>
             <CardHeader>
-              <Heading size="md">{study.name}</Heading>
-
+              <Flex justifyContent="space-between" alignItems="center">
+                <Heading size="md" isTruncated>
+                  {study.name}
+                </Heading>
+                {/* Export Menu Button */}
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    aria-label="Export options"
+                    icon={<DownloadIcon />}
+                    variant="ghost"
+                    size="sm"
+                  />
+                  <MenuList>
+                    <MenuItem onClick={() => handleExport(study, "csv")}>
+                      Export as CSV
+                    </MenuItem>
+                    <MenuItem onClick={() => handleExport(study, "excel")}>
+                      Export as Excel
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </Flex>
               <Text color="gray.500" fontSize="sm">
                 Admin: {study.admin ? study.admin.username : "N/A"}
               </Text>

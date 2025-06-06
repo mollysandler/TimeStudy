@@ -284,13 +284,13 @@ export default function TimeStudyDetailPage() {
                   </Text>
                 </Box>
 
-                <Button
+                {/* <Button
                   leftIcon={<AddIcon />}
                   size="sm"
                   onClick={() => alert("Manage assignments (not implemented)")}
                 >
                   Manage Assignments
-                </Button>
+                </Button> */}
               </CardHeader>
               <CardBody>
                 {timeStudy.machinists && timeStudy.machinists.length > 0 ? (
@@ -311,7 +311,7 @@ export default function TimeStudyDetailPage() {
                         </Text>
                       </Box>
                       <Flex gap={2}>
-                        <IconButton
+                        {/* <IconButton
                           icon={<EditIcon />}
                           size="sm"
                           variant="outline"
@@ -321,8 +321,8 @@ export default function TimeStudyDetailPage() {
                               `Edit machinist ${machinist.id} (not implemented)`
                             )
                           }
-                        />
-                        <IconButton
+                        /> */}
+                        {/* <IconButton
                           icon={<DeleteIcon />}
                           size="sm"
                           colorScheme="red"
@@ -333,7 +333,7 @@ export default function TimeStudyDetailPage() {
                               `Remove machinist ${machinist.id} (not implemented)`
                             )
                           }
-                        />
+                        /> */}
                       </Flex>
                     </Flex>
                   ))
